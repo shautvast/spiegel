@@ -1,3 +1,6 @@
 work in progress
 Goal: image filters, running clientside
-![](source.jpg =200x300) => ![](destination.jpg =200x300)
+
+<img src="source.jpg" height="250"></img>
+=>
+<img src="destination.jpg" height="250"></img>
