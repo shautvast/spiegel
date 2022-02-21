@@ -1,5 +1,6 @@
-work in progress
-Goal: image filters, running clientside
+Work in progress!
+
+Goal: image filters, running in the browser
 
 <img src="source.jpg" height="250"></img>
 =>
