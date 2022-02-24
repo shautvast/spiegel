@@ -305,6 +305,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "image"
 version = "0.23.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -954,8 +960,10 @@ name = "yew-app"
 version = "0.1.0"
 dependencies = [
  "gloo-utils",
+ "hex",
  "image",
  "imageproc",
+ "lazy_static",
  "log",
  "wasm-bindgen",
  "wasm-logger",
