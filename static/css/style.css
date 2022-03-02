@@ -25,3 +25,7 @@ p {
     width: 25%;
     border: rgb(17, 122, 184) solid 3px;
 }
+
+.hidden{
+    display: none;
+}

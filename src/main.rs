@@ -1,3 +1,5 @@
+extern crate lazy_static;
+
 mod app;
 mod transform;
 mod quantizer;

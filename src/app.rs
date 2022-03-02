@@ -1,13 +1,14 @@
 use gloo_utils::document;
 use image::RgbImage;
 use wasm_bindgen::{Clamped, JsCast};
+use wasm_bindgen::prelude::*;
 use web_sys::{DragEvent, HtmlImageElement};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 use web_sys::Url;
 use yew::{Component, Context, html, Html};
 
-use crate::transform;
-use crate::transform::ColorSample;
+use crate::{samples, transform};
+use crate::samples::{ColorSample, Samples};
 
 pub enum Msg {
     Dropped(DragEvent),
@@ -16,7 +17,7 @@ pub enum Msg {
 }
 
 pub struct DropPhoto {
-    // color_samples: Vec<ColorSample>
+    samples: Samples
 }
 
 impl Component for DropPhoto {
@@ -24,13 +25,12 @@ impl Component for DropPhoto {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        transform::init();
         Self {
-            // color_samples: transform::init().expect("")
+            samples: Samples::new()
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(& mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Dragged(event) => {
                 event.prevent_default();
@@ -78,7 +78,7 @@ impl Component for DropPhoto {
                         .unwrap();
                     let raw_pixels: Vec<u8> = imgdata.data().to_vec();
                     let rgb_src = RgbImage::from_raw(canvas.width(), canvas.height(), raw_pixels).unwrap();
-                    // let transformed = transform::apply(rgb_src, &self.color_samples).expect("Cannot transform image");
+                    let transformed = transform::apply(&rgb_src).expect("Cannot transform image");
                     let image_data = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgb_src.to_vec()),
                                                                           canvas.width(), canvas.height());
 
@@ -101,21 +101,42 @@ impl Component for DropPhoto {
             <img id="source-image" style="display:none" onload={link.callback(|_| Msg::ImageLoaded)}/>
             <canvas id="source"></canvas>
             <canvas id="dest"></canvas>
+            <div id="samples" class="hidden"></div>
+            <canvas id="buffer" class="hidden"></canvas>
             </>
         }
     }
 }
 
-//make generic for element type
-// fn with_element<F>(id: &str, action: F)
-//     where
-//         F: Fn(Element),
-// {
-//     if let Some(element) = document()
-//         .get_element_by_id(id) {
-//         action(element);
-//     }
-// }
+// if the transformer needs a new sample, it uses HtmlImageElement to download it.
+// all is async
+pub fn add_sample(name: &'static str) {
+    let sample = document().create_element("img").unwrap().dyn_into::<HtmlImageElement>().expect("Cannot create img element");
+    sample.set_src(&format!("/static/samples/{}.jpg", name));
+    let samples = document().get_element_by_id("samples").unwrap();
+
+    let image_loaded = Closure::wrap(Box::new( |_: web_sys::Event| {
+        if let Some(canvas) = document().get_element_by_id("buffer").and_then(|e| e.dyn_into::<HtmlCanvasElement>().ok()) {
+            let ctx: CanvasRenderingContext2d = canvas
+                .get_context("2d")
+                .unwrap()
+                .unwrap()
+                .dyn_into::<CanvasRenderingContext2d>()
+                .unwrap();
+            canvas.set_width(sample.width());
+            canvas.set_height(sample.height());
+            ctx.draw_image_with_html_image_element(&sample, 0.0, 0.0).expect("Cannot draw image on canvas");
+            let imgdata = ctx
+                .get_image_data(0.0, 0.0, canvas.width() as f64, canvas.height() as f64)
+                .unwrap();
+            let raw_pixels: Vec<u8> = imgdata.data().to_vec();
+            let sample = RgbImage::from_raw(canvas.width(), canvas.height(), raw_pixels).unwrap();
+            samples::insert(name.to_owned(), ColorSample::new(&name, sample));
+        }
+    }) as Box<dyn FnMut(_)>);
+    sample.add_event_listener_with_callback("load", image_loaded.as_ref().unchecked_ref()).expect("cannot add onload listener");
+    samples.append_child(&sample);
+}
 
 fn create_element<'a, T>(element_type: &str) -> T
     where
@@ -125,8 +146,4 @@ fn create_element<'a, T>(element_type: &str) -> T
     element
         .dyn_into::<T>()
         .expect(&format!("Cannot create element {}", element_type))
-}
-
-pub fn _get_image_data(canvas: &HtmlCanvasElement, ctx: &CanvasRenderingContext2d) -> ImageData {
-    ctx.get_image_data(0.0, 0.0, canvas.width() as f64, canvas.height() as f64).unwrap()
 }
